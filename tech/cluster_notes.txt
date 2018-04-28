@@ -1,0 +1,60 @@
+cluster notes
+
+https://en.wikipedia.org/wiki/Computer_cluster
+
+- q: what does scheduling applications mean?
+    - a 
+- q: what is a cluster?
+    - a cluster is a set of loosely or tightly connected computers that work together
+    - usually connected via fast local area networks
+    - usually are running on same hardware and operating system
+    - deployed to improve performance/availability over a single computer
+    - more cost-effective than single computers of comparable speed/availability
+    - low cost microprocessors, hish-speed networks, and software for high performance distributed computing
+    - connect a number of readily available nodes via lan
+    - activities of nodes orchestrated by a software layer just above
+    - nodes are managed via centralized management approach
+    - clusters used for high computation services as opposed to io oriented applications
+    - clusters may end up having redundant nodes
+    - clusters good for reliability, load balancing, fault tolerance
+    - clusters usually have slaves + masters
+        - slaves communitcate to masters
+        - slaves have own version of same os, local memory, disk space
+- managing a cluster
+    - task scheduling
+        - large amounts of data messes stuff up
+        - how to map tasks onyo CPU cores and GPU devices
+    - node failure management
+        - fencing, make sure node is isolated
+
+https://en.wikipedia.org/wiki/Job_scheduler
+
+job schedulers 
+- a computer application to control unattended background program execution of jobs
+- main data structure to organize this stuff is a job queue
+- basic features:
+    - interfaces to help define workflows/job dependencies
+    - automatic submission of executions
+    - interfaces to monitor executions
+    - priorities/queues to control execution order of unrelated jobs
+- advanced features
+    - real-time scheduling based off of external/unpredictable events
+    - automatic restart/recovery when failure occurs
+    - alerting/notifications
+    - incident report generation
+    - audit trails
+- main concepts
+    - jobs
+    - dependencies
+    - job streams
+    - users
+- architecture
+    - master/agent arch
+    - cooperative arch
+- how to manage a job queue for a cluster of computers
+
+
+
+
+
+

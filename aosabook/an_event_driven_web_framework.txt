@@ -1,0 +1,113 @@
+An Event-Driven Web Framework
+http://aosabook.org/en/500L/an-event-driven-web-framework.html
+
+- web based game 
+    - one player must wait for the other to make a move
+    - want to subsequently be notified of move
+    - harder problem to solve than it seems
+
+basics of http servers
+- basic interaction
+    - a request followed by a response
+    - client sends request
+    - server parses request, makes and sends response
+    - here, a server responds to a specific client
+    - each player needs to be informed of all moves
+    - need server to push messages to every player without recieving an explicit request
+
+approaches to server push
+- comet/long pull
+    - client sends a request to server as sonn as response is sent
+    - server does not respond immediately, it waits for an event
+- server-sent events
+    - client initiates connection and keeps it open
+    - server will write data to it without closing it
+    - client interprets new incoming messages
+    - good in that client does not have to keep sending requests
+        - can mean less http headers to send, prob will be redundant
+- websockets
+    - communication protocol on top of http
+    - server and client open up a http conversation
+    - perform a handshake and protocol escalation
+    - using tcp/ip, but not http
+    - can customize protocol for efficiency
+- long lived connections
+    - all of them depend on long lived connections
+
+traditional http architecture
+- how to process requests
+    - single http server processes requests concurrently
+    - thread per connection (read nginx to see that this is not great scaling)
+    - if you have a game, then it needs 1 connection per user
+        - n people = n connections
+- game situation
+    - is there a central data storage to store the state
+    - how to synchronize all of the players
+    - need a single thread for many requests/connections
+    - single thread will handle slices of all requests in parallel
+    - try to switch between many of them
+    - event driven/event based
+- event driven/based
+    - all on a single thread
+    - need to make sure it never blocks on any connection
+        - one block blocks every other connection
+    - have to move on if a block is spotted
+    - asynchronous is tough on programmer (deal with it, make it work)
+    - many programming libs/languages assume blocking on i/o is good
+- architectural decisions
+    - build an event driven server
+    - use case needs frequent updates to client, but sparse requests from the client
+    - this fits the server sent events approach
+
+implementation
+- event loop
+    - listen for incoming connections
+    - handle all new handshakes or incoming data on existing connections
+    - clean up dangling sockets that are unexpectedly killed (e.g. by an interrupt)
+- to handle connections
+    - a new client socket ready to start conversation
+    - accept the connection and record it in the connection table
+- buffers
+    - when there are bytes ready to read
+    - allocate a buffer for it
+    - read into the buffer
+    - this part has io, worry about blocking here
+
+processing connections without blocking
+- there is a lib that immediately returns nil if stream has no data
+- use buffer to store available data
+- when buffer is called 
+    - increments the tries count, so that we can evict "needy" buffers in process-ready
+    - loops to read characters from the input stream
+    - returns the last character it read if it has read all of the available input
+- buffer class composition
+    - tries, which keeps count of how many times we've tried reading into this buffer
+    - contents, which contains what we've read so far
+    - bi-stream, which a hack around some of those Common Lisp-specific, non-blocking-I/O annoyances I mentioned earlier
+    - total-buffered, which is a count of chars we've read so far
+    - started, which is a timestamp that tells us when we created this buffer
+    - request, which will eventually contain the request we construct from buffered data
+    - expecting, which will signal how many more chars we're expecting (if any) after we buffer the request headers
+- interpreting requests
+    - already incrementally assembled a request
+    - need to process/handle that request
+    - have to parse for html, string parsing
+- write responses back to the client
+    - can return a normal http response or server-side update
+    - server-side is a smaller incremental response
+    - register channels to remember which clients to send data to
+    - can block on writes too, less likely than read
+    - if a write takes too long (> 0.2 sec), throw it out
+    - need an error handler too
+
+extending the server into a web framework
+- need an interface between application and server
+- app can do a lot, but needs to easily integrate with server code
+
+
+
+
+
+
+
+

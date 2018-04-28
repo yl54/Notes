@@ -1,0 +1,64 @@
+nomad notes
+
+- binary to schedule applications/services on Linux, Windows, and Mac
+- scheduler that uses a declarative job file for scheduling virtualized, containerized, and standalone applications
+- manages cluster of machines and run apps on them
+    - let users declare what they want to run
+    - nomad handles where they should run and how to run them
+- key features
+    - docker support
+    - nomad ships as single binary
+    - model infrastructure as groups fo datacenters which are larger region
+    - can run different types of task drivers
+- use cases
+    - Microservices
+        - services with narrow scope, tight encapsulation, API driven interfaces
+        - challenge of managing hundreds/thousands of small apps vs a few big apps
+    - Hybrid cloud
+        - cloud agnostic
+        - easier to migrate workloads
+        - bursting would be useful too
+    - e-commerce
+        - e-commerce websites have a few types of workloads
+        - long services for web serving
+        - load balancer, web frontends, API servers, and OLTP databases
+        - nomad can allow all these services to share a cluster
+- nomad vs terraform
+    - terraform: tool to build/change/version infra safely
+    - terraform designed to support any type of resource
+        - low level components: compute instances, storage, networking
+        - high level components: DNS, SaaS features
+        - terraform knows how to create, provision, manage lifecycles
+    - nomad runs on existing infra and manages lifecycles of apps running on that infra
+    - terraform = offline tool to run to completetion
+    - nomad = online system with long lived servers
+    - nomad allows for new jobs to be submitted, existing jobs updated/deleted, handle node failures
+        - this functionality requires operating continuously vs in a single shot
+    - for small amounts of infra, just use terraform to assign a few quick machines
+    - for large amounts of infra, use terraform to provision capacity for nomad, use nomad to manage scheduling apps dynamically
+    - basically, they work together
+- get started
+    - install
+        - need os + docker + nomad installed
+    - running + agent
+        - agent is long running, server or client mode
+        - agent runs on every node that is part of cluster
+        - manually start an agent
+        - 
+    - jobs
+        - have a init and .nomad file
+        - nomad will determine actions, can always check on status
+        - plan will do a diff check basically
+        - check index will make sure nothing has been changed, good for multiple people
+        - eventually stop a job if needed
+    - clustering
+    - nomad ui
+
+
+https://en.wikipedia.org/wiki/Nginx
+
+- nginx deployed to serve dynamic http content on network
+- asynchronous event driven approach to handling requests
+- more predictable performance under high loads
+- cannot override systemwide access settings on a per file basis
+

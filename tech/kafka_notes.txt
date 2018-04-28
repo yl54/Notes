@@ -1,0 +1,21 @@
+kafka notes:
+
+https://kafka.apache.org/intro
+
+- distributed streaming platform
+- website key points:
+    - It lets you publish and subscribe to streams of records. In this respect it is similar to a message queue or enterprise messaging system.
+    - It lets you store streams of records in a fault-tolerant way.
+    - It lets you process streams of records as they occur. 
+- 2 key application scenarios
+    - build real time streaming pipeline between applications/systems
+    - build real time streaming applications to transform/react to the data
+- each record has key/value/timestamp
+- pieces
+    - producer - publish stream to kafka topic
+    - consumer - allow app to subscribe and process stream of records produced to them
+- topics
+    - a category to which records are published to
+    - can have multiple consumers
+    - each topic has a partitioned log
+    - each 

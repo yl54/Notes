@@ -1,0 +1,188 @@
+nginx notes
+
+http://www.aosabook.org/en/nginx.html
+
+context
+- nginx is an open source web server
+- high concurrency is necessary to properly digest any amount of traffic
+- apache scenario
+    - produce a 100 KB response, thats cheap
+    - 10 seconds to transmit to client with 80kbps, thats bottleneck
+    - 1MB memory per client, thats not cheap
+    - imagine 1000 connections, 1000 MB for each 100 KB message, thats bad/inefficient
+    - not good to just increase the size of operating system kernel socket buffers
+    - many times, clients leave connection open, so need mem allocated to each
+- the web server software accepts and processes client connections
+    - so that software should be able to scale with connections
+- apache server started as a good foundation
+    - good for past internet usage
+    - ran a single instance of apache
+    - eventually increase in amount of traffic
+    - apache became more feature-rich of a web server
+    - less scalability b/c more resource consumption per connection
+- nginx tries to solve C10k problem
+    - scale in nonlinear fashion
+    - don't spawn new process/thread per web request
+    - pure event driven web server
+- traditional processes
+    - handling concurrent connections: 1 process/thread per connection
+    - blocking on network io happens a lot
+    - either more cpu or memory inefficient
+    - spawning a new thread/process needs:
+        - new runtime environment 
+        - allocation of stack/heap memory
+        - new execution context
+        - cpu time to create these
+    - too many threads = thread thrashing, excessive context switching
+- nginx has very specific purpose
+    - achieve more performance, density and economical use of server resources
+    - enable dynamic growth of a website
+    - modular, event driven, asynchronous, single threaded, non-blocking
+
+code structure
+- worker includes core and modules
+- core 
+    - tight run loop
+    - execute appropriate stages of module code
+- modules
+    - read/write to network/storage
+    - transform content
+    - outbound filtering
+    - apply server side include actions
+    - pass requests to upstream servers when reverse proxy enabled
+- nginx design
+    - code is modular
+    - can support plugins for other functionality
+    - accepting, processing and managing network connections and content retrieval
+    - use event notification mechanisms and disk I/O performance enhancements in linux
+    - provide many hints to the os for nginx optimization
+    - obtaining timely asynchronous feedback for inbound and outbound traffic
+    - disk operations
+    - reading from or writing to sockets
+    - timeouts
+- workers
+    - worker process accepts new requests from a shared listen socket
+    - execute highly efficient run-loop to process thousands of connections per worker
+    - no specialized arbitration/distribution of connections to workers
+        - this is done by OS kernel mechanisms
+    - on startup, an initial set of listening sockets is created
+    - workers continuously accept, read from, write to sockets while processing http requests
+    - comprehensive inner calls
+    - asynchronous task handling
+        - Asynchronous operations are implemented through modularity, event notifications, extensive use of callback functions and fine-tuned timers
+    - only blocker is disk
+    - conserve cpu cycles because not much context switching and process creation
+    - key steps:
+        - initialize new connections 
+        - add them to the run-loop
+        - process asynchronously until completion
+        - deallocate connection and remove from the run-loop
+    - only a few workers to handle all connections
+    - scales with multicore
+    - worker per core allows:
+        - full utilization of multicore architectures
+        - prevent thread thrashing and lock ups
+        - no resource starvation
+        - resource controlling isolated in worker's single thread
+        - basically hardware resources more efficiently/actually used   
+- nginx installation should be planned around:
+    - data set
+    - amount of memory available for nginx
+    - underlying storage architecture
+        - q: how might disk vs hdfs vs ssd make a difference?
+- a few issues
+    - block by disk io is tough
+    - limited support for embedded scripting
+        - q: what is an embedded script?
+        - scripts could block other stuff easily
+- process roles
+    - nginx runs several processes in memory: 1 master, several workers
+    - a few special purpose processes: cache loader, cache manager
+    - processes are single threaded, shared memory for communication
+    - master is responsible for: 
+        - reading and validating configuration
+        - creating, binding and closing sockets
+        - starting, terminating and maintaining the configured number of worker processes
+        - reconfiguring without service interruption
+        - controlling non-stop binary upgrades (starting new binary and rolling back if necessary)
+        - re-opening log files
+        - compiling embedded Perl scripts
+    - worker is responsible for
+        - accept, handle, process connections from clients
+        - provide reverse proxying
+        - filtering functioning
+        - lots of other things
+    - cache loader
+        - check on disk cache items
+        - populate nginx memory database with cache metadata
+        - prepares nginx to work with files already on disk
+- nginx caching
+    - implemented as a hierarchical data storage on a filesystem
+    - cache keys are configurable, can control who can access what
+    - cache key and metadata stored in the shared memory
+        - cache loader, cache manager, workers can access
+    - no in memory caching of files
+    - cached responses placed on filesystem
+
+configuration
+- core principle: need a scalable configuration for a web server
+    - maintaining large complicated config files with many resources involved is hard
+    - nginx helps to simplify this process
+- nginx
+    - config exists in /usr/local/etc/nginx or /etc/nginx
+    - strongly suggest centralized config
+    - config initially read and verified by master
+    - compiled read only form is provided to workers
+    - config structures are shared between workers
+    - different contexts for main, http, main, http, server, upstream, location, mail
+    - contexts do not overlap
+    - no global config
+
+nginx internals
+- process connections through a pipeline of modules
+    - for every operation, there is a module doing the relevant work
+    - compression, modifying content, executing server-side includes, communicating to the upstream application servers through FastCGI or uwsgi protocols, or talking to memcached
+    - http and mail are in between core and module functionality
+- typical HTTP request processing cycle
+    - Client sends HTTP request.
+    - nginx core chooses the appropriate phase handler based on the configured location matching the request.
+    - If configured to do so, a load balancer picks an upstream server for proxying.
+    - Phase handler does its job and passes each output buffer to the first filter.
+    - First filter passes the output to the second filter.
+    - Second filter passes the output to third (and so on).
+    - Final response is sent to the client.
+- devs can write their own modules, but must follow very specific guidelines
+- upstream
+    - modules mostly prepare request to be sent to upstream server/backend
+    - recieve request from the upstream server
+    - set callbacks to be invoked when the upstream server is ready to read/write
+    - tricks include:
+        - Crafting a request buffer (or a chain of them) to be sent to the upstream server
+        - Re-initializing/resetting the connection to the upstream server (which happens right before creating the request again)
+        - Processing the first bits of an upstream response and saving pointers to the payload received from the upstream server
+        - Aborting requests (which happens when the client terminates prematurely)
+        - Finalizing the request when nginx finishes reading from the upstream server
+        - trimming the response body (e.g. removing a trailer)
+- load balancer
+    - module attaches to proxy_pass handler to have ability to choose upstream server when multiple upstream servers exist
+    - takes config files
+    - init upstream functions
+    - initialize connection structures
+    - pick where to route the requests to 
+    - update stats information
+    - choice is round robin or ip hash
+    - have some functionality of health checks and re-route to new servers
+- memory management
+    - for each connection, memory buffers allocated, linked, used for storing and manipulating the header and body of the request and the response 
+    - released memory after connection release
+    - avoid copying memory, prefer to pass pointers along
+    - when response is generated, content is put in memory buffer, which is added to memory chain link
+    - buffer chains are odd b/c they need to be processed differently depending on module
+    - modules can only overwrite, replace with newly allocated, or insert a new buffer before or after
+    - what if a module recieves several buffers?
+    - nginx pool allocator
+        - shared memory areas
+        - uses a slab allocator
+        - locks + semaphores to safely use memory
+        - red black trees to keep cache metadata in memory, track non regex locations
+

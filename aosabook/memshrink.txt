@@ -1,0 +1,203 @@
+Memshrink
+http://aosabook.org/en/posa/memshrink.html
+
+Intro
+- Firefox used to always leak lots of memory
+- did improve performance, but at cost of more leaking
+- need to improve or else fall behind
+
+Architecture overview
+- web browser basics
+    - a vm for any code you look for
+    - code is random html, css, js from said third parties
+    - firefox add-ons/plugins
+    - vm provides capabilities for:
+        - computation
+        - layout and styling of text
+        - images
+        - network access 
+        - offline storage
+        - access to hardware-accelerated graphics
+    - capabilities via provided APIs
+    - web browsers must be liberal in context they must accept
+- firefox arch
+    - foundation = Gecko layout engine + Spidermonkey JS engine
+    - both are dev for firefox, but can be independently used
+    - both written in C++
+    - Spidermonkey implements js vm with gc and multiple just in time compilation
+    - Gecko provides API available to web page
+        - DOM
+        - graphical rendering via software/hardware
+        - page and text layout 
+        - a full networking stack
+        - more stuff as well
+    - the firefox user interface is web pages with special privileges called chrome
+- Spidermonkey + Gecko memory management basics
+    - categorize into how its allocated and how its freed
+    - dynamically allocated memory is heap from the os
+    - 2 main heap allocators
+        - specialized garbage-collected heap allocator for Spidermonkey
+        - jemalloc for both
+    - three main ways to free memory
+        - manually
+        - reference counting
+        - garbage collection (gc)
+- Spidermonkey memory management
+    - gc heap contains objects, functions, things created by js
+    - also store implementation details whose lifetimes are linked to these objects
+    - standard incremental mark and sweep 
+        - optimized for performance and responsiveness
+    - gc will wake up periodically 
+    - will go through a tree of objects and find everything with a reference
+    - sweeps stuff that cannot be reached and frees for future use
+- Gecko memory management
+    - most memory is reference counted
+    - reference counting 
+        - track how many references exist for a piece of memory
+        - when that number reaches 0, it can be freed
+    - cycle problems
+        - simple reference counting cannot deal with cyclical references
+        - Gecko has a cycle collector designed to check for cycles
+        - only certain objects/classes opt into cycles
+        - cycle management is subset of reference counting
+- addition techniques    
+    - manually managed memory:
+        - internal arrays and hashtables
+        - buffers of image and script data
+    - arena collector
+        - arena = when large number of separate allocations can be freed together
+        - Gecko uses for load/leave a web page
+        - it will get chunks of memory and divide it on its own discretion
+        - free is just free the large chunk of memory
+        - implement poisoning, overwriting deallocated memory so that it cannot be exploited
+
+Problems
+- memory leak
+    - os definition: take memory from os and don't release back to os
+    - os definition does not cover "not optimal" uses of memory 
+        - A data structure requires twice as much memory as it needs to
+        - Memory that is no longer used is not released until a timer expires
+        - Many copies of the same large buffer (strings, image data, etc.) exist throughout the program
+    - need to understand if true leak or inefficient usage of memory
+    - problems with using massif or gdb
+        - not always "on" for problematic situations
+        - not aware of firefox internals
+    - instead, build set of custom tools
+- about:memory
+    - first displayed simple statistics about the heap
+        - such as amount of memory mapped and committed
+    - added particular details for developers
+        - memory used by embedded SQLite database engine
+        - amount of memory used by the accelerated graphics subsystem
+        - those are memory reporters
+        - most memory did not have a reporter at this stage
+    - before memshrink, the global gc was split into smaller subheaps called compartments
+        - try to separate memory groups from each other
+        - i.e: separate chrome and content  
+        - primary motivation was security
+        - made it convenient for memshrink as well
+        - about:compartments displayed mem used per compartment
+        - eventually merged into about:memory
+    - showed that adding reporters for other allocations is most useful profiling tool
+        - started to display a tree breaking down memory usage into a large number of different uses
+        - add new reporters for other allocations
+        - want to lower heap-unclassified memory report % to sub 20
+        - want to increase insight into when/how memory is used by browser
+- how to reduce heap-unclassified
+    - wrote a tool called Dark Matter Detector to track unreported heap allocations
+    - replaces memory allocator, match reported memory blocks to allocated blocks
+    - summarizes unreported allocations by call site
+    - once you identify the source of allocation, show to relevant dev to make a reporter for you
+    - Measure and Save
+        - used to debug once memory issues were found
+        - dumps representations of js heap andcycle collected c++ heap onto a file
+        - wrote scripts to traverse heap to answer questions
+            - i.e: what is keeping this object alive?
+        - can see specific objects of interest, 
+            - place even better breakpoints
+            - check links to some problematic object
+- overall benefits
+    - can run these tools after problem occurs
+        - massif/gdb need to be running at the moment
+    - can view issues without repro, if can't get a repro
+    - anyone can capture the information
+    - built a specific heap profiler to suit their own needs
+    - use custom tooling when traditional tools don't provide enough information/flexibility
+
+low hanging fruit/miscellaneous issues encountered
+- eventually, you understand what is normal behavior and what is not
+    - easy to spot abnormalities
+    - sometimes large heap-unclassified was arcane js that doesnt need reporter
+    - could be unoptimized/weird code paths hit
+- compartment sticks around after page is gone
+    - sometimes gc would run multiple times
+    - sometimes go away, sometimes stay indefinitely
+    - the amount of memory a web page can use is unbounded
+    - found in firefox and in add ons
+    - eventually found that there were long lived objects maintaining references to short lived js objects
+    - the long lived were objects attached to browser window, while short are from web pages
+    - a reference to an object from the web page will keep the entire web page alive
+    - subtle difference: gc reclaims memory when its unreachable, not when program is done using it
+    - up to programmer to make sure that memory is unreachable 
+    - not removing references is bad when usage duration varies between the objects linked together
+    - saw that closing web pages did not lower memory usage by much
+    - js engine allocate memory from os in mb chunks
+    - the entire mb block must be unreferenced to free the block back to os
+    - solved by segregating chrome and compartment allocations
+    - the chunk taken from os must either only be chrome or compartment based
+    - reducted memory usage by a lot
+- technique to reduce fragmentation
+    - primary heap allocator is jemalloc modified to work on windows and mac
+    - jemalloc is designed to lower memory fragmentation
+    - jemalloc rounds allocations to various size classes, then allocate those chunks in contiguous chunks of memory
+    - makes it easier to reuse for later
+    - rounding up does waste some space
+    - worst case: 50% of allocation wasted
+    - round up via power of 2
+    - rule: always ask for memory chunks of powers of two
+        - it just fits into every allocator written
+    - maybe can use memory that already has been called for
+    - lots of code in Gecko tried to take advantage of this, lots of it is wrong
+    - many did math slightly off, allocated just beyond the intended amount
+    - one example was with arena collector
+        - asked for 4KB chunks
+        - added a few words for book keeping
+        - pushed amount over 4KB, resulting in 8KB chunks
+        - wasted nearly 50% of memory allocated
+    - SQLite
+        - Gecko uses SQLite as database for bookmarks + history
+        - SQLite gives application control over memory allocation
+        - SQLite also measures its memory usage on its own
+        - uses a few words to measure memory consumption
+        - these words push it over the current size class
+        - not only under reports, but also wastes space
+
+fixing issues
+- many issues were coming via various add ons
+- add ons come from mozillas repository
+    - they go through a testing scheme
+    - they began to use about:memory and saw lots of zombie components
+    - reached out to add on owners to fix stuff, best practices
+        - most did nothing
+        - incentives dont always always align
+    - have to clean up anyways
+    - initially thought that separating chrome from compartments for add ons will break lots of add ons
+        - turns out most items not used after leaving page
+    - add ons were caching items 
+        - found it was ok to purge these items
+
+future improvements
+- most of easy problems fixed by initial effort, which is good
+- plans
+    - reduce fragmentation with a moving garbage collector
+    - handle images more efficiently
+    - may need refactoring of existing code
+- regression testing for memory
+    - tests used to suck, not mirror real usage 
+    - build tests to mirror real usage of users
+    - get from Tp5 list, top web sites
+- test memory before, during, after session
+- areweslimyet.com is a website they built to show results
+- community also helps with QA, localization, marketing, etc.
+    - structured memstrink to get community support, which was vital
+

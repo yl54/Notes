@@ -1,0 +1,89 @@
+A Simple Web Server
+http://aosabook.org/en/500L/a-simple-web-server.html
+
+intro
+- core of web interactions mostly the same
+- handle same messages in similar ways
+- devs can add more features in non-distruptive ways
+
+background
+basic interactions
+- ip 
+    - internet protocol
+    - ip is communication stardard every program runs on
+- tcp
+    - transmission control protocol
+    - tcp looks like reading/writing files
+- programs communicate via sockets
+- socket = ip address 
+- ip address
+    - four 8 bit numbers + port # on a machine
+    - serves to identify the machine
+- dns
+    - domain name system
+    - dns maps ip address to symbolic names (ie espn.com)
+- port number
+    - number in range of 0 - 65535 (2^16)
+    - uniquely identifies socket on machine
+    - 0 - 1023 (2^10) is reserved for OS
+    - the rest is for anyone
+- http
+    - hypertext transfer protocol
+    - one way to exchange data over ip
+    - simple architecture
+    - start with ask/accept connection
+    - client sends request via socket, servers sends data in response
+    - someone closes connection
+- http requests
+    - http requests are simply text
+    - large majority are GET or POST requests
+    - url sent = what sender wants
+    - many times, machine reads from a path off of disk
+        - www.espn.com/nba/draft
+        - look for a page in /nba/draft 
+    - http headers are key/value pairs
+    - keys can appear as many times as you want
+    - body contains whatever useful data is necessary
+    - content-length is how much data to expect to read
+    - http responses are basically requests from the server
+    - response will send a status code to tell sender what happenned
+- http 
+    - stateless interactions
+        - each request is separate
+        - communicators remember nothing, only know the current response
+        - apps must remember transaction history on their own
+        - one way to remember stuff is with a cookie
+        - server issues cookie
+        - server uses cookie to remember what user is doing
+    - url can have more information
+        - add key/value parameters to url after "?"
+
+writing a simple web server
+- basic idea 
+    - wait for someone to connect to our server and send an HTTP request
+    - parse that request
+    - figure out what it's asking for
+    - fetch that data (or generate it dynamically)
+    - format the data as HTML
+    - send it back
+- request handler
+    - it handles the incoming http request
+    - decides what method it contains
+    - code sends some html text back to user if its a GET method
+    - if no path in request, then "/"
+    - can make it as complicated as you want in terms of creating a page
+    - program can send whatever request code it wants
+        - i.e requested path does not exist, return whatever
+    - program should have error handler ready
+- how to let it listen on machine
+    - define what ip/port the servers handles requests on
+    - create an instance of an http server
+    - allow the server to run forever
+- CGI protocol
+    - common gateway interface
+    - people don't always want to edit source of web server
+    - run external programs to satisfy requests
+    - do not allow program to be referenced via path
+    - let program be run under something else, capture its output
+
+

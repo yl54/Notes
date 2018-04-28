@@ -1,0 +1,62 @@
+Flume
+--------------------------------------------------------------------------------------------------------
+
+https://blogs.apache.org/flume/entry/flume_ng_architecture
+- overall
+    - "distributed, reliable, and available system for efficiently collecting, aggregating and moving large amounts of log data from many different sources to a centralized data store"
+    - use single hop message deliver guarantee semantics
+    - very flexible in terms of directing flow
+- core concepts
+    - event: byte payload, core unit of data Flume transports
+        - Q: any limit on amt/frequency?
+    - flow: movement of events from origin to final destination
+    - client: agent at origin point, delivers events to Flume agent
+    - agent: independent process to host flume components; can recieve, store, and forward events
+    - source: interface to consume events delivered to it via specific mechanism
+    - channel: transient store for events
+    - sink: interface to remove events from channel, send to next agent or final destination
+    - Q: are sources/sinks embedded in agents? What are embedded in agents and what are not embedded?
+- generic flow
+    - flow starts at client
+    - client transmits event to hop destination, a source embedded in agent
+    - source delivers it to 1+ channel(s)
+    - channels drained by 1+ sink(s)
+    - if regular sink, forward event to next hop destination, another agent
+    - if terminal sink, forward event to final destination
+- reliability
+    - channel-based transactions to guarantee reliable message delivery
+    - message from agent to agent
+        - two transactions are started, one on each agent
+        - basically a lock between the two
+    - scenario: flow passes through many different agents
+        - failure that occurs somewhere in the middle of flow
+        - i think its saying that the event goes to sending agent place
+    - i don't understand failure handling
+
+https://blogs.apache.org/flume/entry/apache_flume_filechannel
+FileChannel
+- overall
+    - its a persistent Flume channel that supports writing to multiple disks in parallel and encryption
+    - the point is reliable + high throughput
+    - does not do any data replication
+    - MemoryChannel vs FileChannel, don't know exact differences
+    - flume transactions are Puts or Takes, lead to commit or rollback
+    - sources Puts into channel, sinks Takes from channel
+- design
+    - based on write ahead log or WAL in addition to memory queue
+    - each time Put/Take occurs, need to ensure a pointer is pointing to event on queue
+    - checkpoints to write queue to disk periodically for backups
+- implementation
+    - flume-file-channel module
+    - FlumeEventQueue
+    - LogFile
+
+https://blogs.apache.org/flume/entry/streaming_data_into_apache_hbase
+- scenario
+    - writing events into HBase
+    - need serializer objects to convert Flume Events to HBase puts
+
+
+
+
+

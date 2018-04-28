@@ -1,0 +1,174 @@
+FreeRTOS
+http://aosabook.org/en/freertos.html
+
+intro
+- FreeRTOS is a open source real-time operating system for embedded systems
+- supports different architectures and compiler toolchains
+- small, simple, easy to use
+- q: what is a real time operating system?
+- most of code dedicated to running tasks
+- rtos source: https://github.com/cjlano/freertos
+
+definitions
+- embedded system
+    - a computer system that is designed to only do a few things
+    - like tv remote, digital watch, pacemaker
+    - smaller, slower, less expensive than general purpose os 
+- real time system
+    - a system designed to do something within a certain amount of time
+    - guarantee that stuff happens when its supposed to 
+    - pacemaker 
+        - has to do things at the exact time
+        - carefully designed to run tasks on time, every time
+    - cannot worry about respoonse time/latency
+
+architecture overview
+- optics
+    - not too many .c files
+        - go read these, should be manageable
+    - typical binary code image is around 10KB
+- core functions
+    - tasks
+        - create, schedule, maintain tasks
+        - this is a concern in many operating systems
+        - tasks.c and tasks.h deal with this
+    - communication
+        - need tasks that communicate with each other
+        - queue.c and queue.h deal with this
+        - tasks and interrupts use queues 
+            - send data to each other
+            - signal use of critical structures such as semaphores and mutexes
+    - hardware whisperer
+        - most code is hardware independent
+        - a little code is a shim between hardware-independent and and hardware-dependent code
+- hardware considerations
+    - hardware-independent code sits on top of hardware-dependent code
+    - ships with all of the code
+    - support many different compilers (CodeWarrior, GCC, IAR, etc.)
+    - supports many processor architectures (ARM7, ARM Cortex-M3, various PICs, Silicon Labs 8051, x86, etc.)
+- configuration options
+    - highly configurable
+        - single CPU, bare-bones RTOS, supporting only a few tasks
+        - highly functional multicore beast with TCP/IP, a file system, and USB
+    - configuration options set in FreeRTOSConfig.h
+        - set various defines: 
+            #define configMAX_PRIORITIES      ( ( unsigned portBASE_TYPE ) 5 )
+            #define configCPU_CLOCK_HZ        ( 12000000UL )
+            #define configTICK_RATE_HZ        ( ( portTickType ) 1000 )
+            #define configMINIMAL_STACK_SIZE  ( ( unsigned short ) 100 )
+            #define configTOTAL_HEAP_SIZE     ( ( size_t ) ( 4 * 1024 ) )
+    - hardware dependent code 
+        - lives in separate files for each compiler toolchain and CPU architecture
+        - hardware specific config is defined in those files
+    - example
+        - tasks.c does not want to know hardware dependent details
+        - has to enter a critical section to do stuff
+        - call a global macro to do the work
+        - different hardware has different sets of code to do same things
+            - different functionality
+            - same names of functions
+    - #define
+        - may be inconvenient/complicated
+        - allows for FreeRTOS to be recompiled for different system architecture
+        - only have to change hardware-dependent files
+        - for embedded systems/lower level things, overhead of "real" functions is not worth advantages
+
+scheduling tasks
+- task priorities and ready list
+    - user-assigned priorities
+        - each task has a priority from 0 to configMAX_PRIORITIES-1
+            - configMAX_PRIORITIES-1 is a compile-time value
+        - lowest to highest
+    - ready list
+        - keep track of all tasks ready to run
+        - array of task lists based on priorities
+- system tick
+    - heartbeat of FreeRTOS system
+    - there is a periodic tick interrupt
+    - when a tick interrupt fires, vTaskSwitchContext() is called
+        - vTaskSwitchContext() picks the highest-priority ready task
+        - puts it in the pxCurrentTCB variable
+        - steps
+            - while loop to look for priority level with ready tasks in pxReadyTasksLists[]
+            - listGET_OWNER_OF_NEXT_ENTRY() grabs the next ready task in that level's ready list
+            - pxCurrentTCB points to highest priority task
+            - when vTaskSwitchContext() ends, hardware dependent code starts running that task
+        - most important lines of code in FreeRTOS:
+            /* Find the highest-priority queue that contains ready tasks. */
+            while( listLIST_IS_EMPTY( &( pxReadyTasksLists[ uxTopReadyPriority ] ) ) )
+            {
+                configASSERT( uxTopReadyPriority );
+                --uxTopReadyPriority;
+            }
+
+            /* listGET_OWNER_OF_NEXT_ENTRY walks through the list, so the tasks of the same 
+            priority get an equal share of the processor time. */
+            listGET_OWNER_OF_NEXT_ENTRY( pxCurrentTCB, &( pxReadyTasksLists[ uxTopReadyPriority ] ) );
+        - pxReadyTasksLists[] is like a list of linked lists of tasks
+
+data structures
+- task
+    - main job of os is to run and cooridinate user tasks
+    - basic unit of FreeRTOS is task
+    - Task Control Block (TCB)
+        - represents each individual task
+        - defined in tasks.c
+        - *pxTopOfStack needs to be first member of struct
+            - this points to last item placed on tasks stack
+            - allow for growth on the linear stick
+        - has checks for stack overflows
+        - uxPriority and uxBasePriority
+            - can change priority if needed
+        - xGenericListItem and xEventListItem
+            - task has 2 list items for use in FreeRTOS scheduling lists
+            - when task is inserted into a list, it does not insert pointer directly to tcb
+            - pointer to xGenericListItem and xEventListItem
+            - more flexibility for lists 
+            - better than pointer directly to tcb
+            - q: is there a global place to store pointers that point to beginning of task structs?
+        - 4 states
+            - running, ready to run, suspended, or blocked
+            - tcb does not store this info
+            - FreeRTOS tracks task state by putting the task in the correct list
+                - ready list, suspended list, etc.
+            - change task state by putting in different list
+    - task setup
+        - xTaskCreate()
+            - called when a task is created
+            - newly allocated tcb object to store base info
+            - allocate amount of stack user requests
+            - task is made to look like new task is already running
+                - treat new tasks the same as current tasks
+                - scheduler does not have special case to handle
+                - probably good for maintanance and efficiency, one less thing to check 
+                - made to look like it was interrupted by a context switch
+                    - specifics depend on architecture FreeRTOS is running on
+                - Q: what does the example of pxPortInitialiseStack mean?
+                    - my guess is that each decrement is going through different caches?
+            - example of pxPortInitialiseStack
+                - ARM Cortex-M3 processor pushes registers on the stack when a task is interrupted
+                - pxPortInitialiseStack() modifies the stack to look like the registers were pushed even though the task hasn't actually started running yet
+                - don't actually need to store data for those registers
+                - just need to allocate space for them
+                - Q: so it's like a mock?
+            - disable interrupts before messing with lists
+                - basically acts like a lock
+                - don't want operations on a changing list, atomicity issues
+            - need to initialize lists 
+                - array of priority lists
+                - suspended list
+                - killed list
+                - delayed list
+            - new task can get added to the respective priority list
+- list
+    - main purpose
+        - used to keep track of tasks for scheduling
+        - implement queues 
+    - structure
+        - standard circular doubly linked list
+- queue
+
+
+
+
+

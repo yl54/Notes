@@ -1,0 +1,139 @@
+commit log notes:
+
+https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying
+
+- everything distills to the log at some point
+- abstraction
+    - append only
+    - order by time 
+    - fifo read/writes
+    - unique sequential log id
+- the notion of time is decoupled from physical clocks
+- file/table/log
+    - file is array of bytes
+    - table is an array of records
+    - log is an ordered table
+- logs record what happened and when
+    - important for distributed data systems
+- database usage of logs
+    - want to keep in sync data structures, data, indicies
+    - especially important during crash scenarios
+    - db will first write log to write info about the records they will modify
+    - log is immediately persisted
+    - log is source to restore everything else
+    - eventually, logs became method of replicating data between databases
+    - many dbs transmit portions of logs to replica databases, which are slaves
+- logs solve 2 big problems
+    - ordering changes
+    - distributing data
+- need to agree upon an ordering for updates
+- State Machine Replication Principle
+    - If two identical, deterministic processes begin in the same state and get the same inputs in the same order, they will produce the same output and end in the same state.
+- deterministic - processing isn't timing dependent
+                - don't let other input influence the final result
+- programs influenced by order of execution of threads/calls are non-deterministic
+- state - whatever data remains on machine after processing
+- intuition: if you feed 2 deterministic pieces of code the same input log, they will produce the same output
+- how to worry less about making multiple machines do same thing/have same state
+    - implement a distributed, consistent log feed for the many processes input
+    - ensure that each replica processing the input stays in sync
+- timestamps can act as state of the db replicas
+    - timestamp + log = entire state of replica
+- can do many things with these logs
+- can shove these logs into services, those can do stuff
+- different database people may log different things
+    - physical records of each row changed
+    - logical records of SQL changes
+- different models to processing and replication
+    - state machine model has one log of requests, all machines do requests
+    - primary backup model has one machine do in some order, rest of machines follow that order
+- machines rarely need to compute/decide 1 value, always need to compute series of requests
+    - single value register thing vs log
+- tables + logs
+    - tables capture data at rest
+    - logs capture change
+- since the log is a changelog, it sort of is a backup of every previous state
+- log is similar to version control
+- "data integration" - an organization's data should be available to all services/systems
+- need reliable data flow at beginning, then can worry about efficient data processing
+    - most just want some data flow, then do cute techniques
+- events that happen and are recorded
+    - can be much larger than traditional db usage
+- specialized data systems
+    - more type of data processing/storage/search/utility/etc.
+    - too many options to integrate
+- log structured data flow
+    - each data source could be modeled as its own log
+    - subscribing systems read and apply each record as fast as possible and move on
+    - subscribers can be any kind of data thing: processors, storage, a db, etc.
+    - log gives something to measure against
+    - maybe if don't want to read old data, just check how far the cache went
+    - also have to worry about subscribers consuming data at different rates
+    - destination only sees data, doesn't see all of the stuff in the middle
+    - logging kind of leads to atomic transactions
+    - log = infrastructure
+- ideally, downstream consumers should only have to read data from one source, not from sources from within
+- data warehousing 
+    - meant to be repository of clean, integrated data
+    - usually: source -> process -> useful -> consumer
+    - clean data is super important
+    - best approach is have a central pipeline with one/few apis
+    - goal: plumbing pipe integrations vs config + bootstrapping
+- log files and events
+    - enables decoupled, event-driven systems
+    - typical web event logging
+        - steps
+            - write to a log file
+            - use a process to scrape from the file
+        - couples data flow to data warehouse scheduling/capabilities
+    - linkedin
+        - steps
+            - use kafka as multi-subscriber event log
+        - i.e a job was seen by othere, event is created
+            - this event only needs to know about the kafka log, nothing else
+        - scalability is tough when adding more and more subscribers
+        - ways to help
+            - don't keep useless copies of data
+            - partition kafka
+            - batch read/writes
+        - partitions do take away global order, but its good enough
+- Logs & Real-time Stream Processing  
+    - stream processing is like infra for continuous data processing
+    - not as much batch processing these days
+- data flow graphs
+    - stream feeds allows us to include feeds from other feeds
+    - these feeds don't look different to consumers
+    - a few good things
+        - multi-subscriber
+        - log provides buffering to processes
+            - speed of processing between steps may be too different
+                - not good thing
+            - maybe a process will be clogged or drop data
+- Stateful Real-Time Processing
+    - many processes are stateless
+    - what if a process needs to do some enrichment?
+    - what happens if a process crashes?
+    - could have a table storing info alongside
+    - state is also kind of a log as well
+- log compaction
+    - cannot keep everything forever in the queue
+    - maybe just keep a window
+
+System building 
+- unbundling
+    - lots of random databases
+    - maybe can have a few clusters vs many many instances
+- key characteristics of logs
+    - consistency across systems/instances
+    - source for replication
+    - commit semantics
+    - an external subscription feed
+    - a buffer for processes
+    - restore failed nodes
+- separation between log and serving layers
+    - log = store state
+    - serving = serve customers
+        - how you serve customers depends on what they are asking for
+        - serving nodes subscribe to log
+    - separate data queries from availability + consistency of system
+
