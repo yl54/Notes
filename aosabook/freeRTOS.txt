@@ -167,8 +167,52 @@ data structures
     - structure
         - standard circular doubly linked list
 - queue
+    - let tasks synchronize with each other using queues
+    - standard queue implementation
+        - head and tail pointers
+        - pointers to where we have written to in queue
+        - need to keep track of queue's storage
+        - makes deep copy of item when item is inserted into queue
+            - lifetime of item vs lifetime of queue may be different
+            - if item is gone, then pointers to item in queue become invalid
+        - can queue items or pointers
+        - non-blocking and blocking queues supported
 
-
-
-
-
+- semaphores and mutexes
+    - freertos uses both
+    - difference
+        - look super similar
+        - elegant quote:
+            - semaphore - used to signal from one task to another
+            - mutex - taken and released 
+            - in free rtos, semaphores are a one way trip
+        - mutex 
+            - used to protect a shared resource
+            - workflow
+                - task acquires mutex
+                - task uses shared resource
+                - task releases mutex
+            - guarantees that only one resource can use the resource
+        - semaphores
+            - task signals another task
+            - workflow
+                - task 1 contains code to post (i.e., signal or increment) a particular semaphore when the "power" button is pressed 
+                - Task 2, which wakes the display, pends on that same semaphore
+                - task 1 is producer of signal
+                - task 2 is consumer of signal
+    - implementation
+        - semaphore
+            - it is an N element semaphore as a queue that holds N items
+            - no data stored for queue items
+            - just needs to know how many items in the queue are occupied
+        - mutex
+            - implemented as a queue
+            - doesn't store any data
+            - XQueue struct fields
+        - priority inheritance
+            - use overloaded pcTail to implement priority inheritance
+            - means a lower priority task inherits the priority of any higher-priority task pending on a resource they share
+            - priority change should take place as soon as the high-priority task begins to pend
+            - it should end when the resource is released
+            - implements it using pxMutexHolder field
+            - if a higher level task is waiting on a lower level task, freertos upgrades the lower priority task to that of the higher level task until mutex is available
