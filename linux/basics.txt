@@ -1,0 +1,185 @@
+big stuff:
+file + file tree
+processes
+different locks + concurrency
+kernel routines
+signals
+memory management
+ram + disk
+device drivers
+
+basic os concepts 
+- kernel = base program
+- loaded into ram
+- job of kernel
+    - interact with hardware
+    - provide execution environment
+- forbid users to interact directly with low level components
+    - two modes
+    - q: why forbid?
+- concurrent execution where several apps can acquire for hardware resources
+- apps should not care about others
+- try to minimize delays enforced to each program
+    - q: what is good about minimizing delays?
+- user = user id
+    - root = superuser 
+
+- one cpu can only hold one process at a time
+    - scheduler chooses what can run
+
+- microkernel = demand small set of functions from the kernel
+    - other stuff comes from processes on top
+- monolithic kernel faster than microkernel
+
+- unix file = info container 
+    - organized via tree
+    - directory + file nodes
+- filename in directory = hard link
+    - q: what is good/bad about hard link? what is different between file and directory?
+- hard links in the same filesystem vs a distributed file system
+- same file may have multiple links
+
+file contents vs file information
+- inode used by filesystem
+- standard set of fields to include for an inode
+
+processes only interact with open files
+- open file object is a file descriptor
+- file descriptor = interaction between process + open file
+- multiple processes can open same file
+    - one file descriptor per process
+- process can create a file too
+
+renaming is a thing
+- dont need to open to rename
+- not operate on contents of the afftected file
+- unlink will remove a file link and decrease the count
+
+process/kernel
+- process = dynamic entity with limited lifespan
+- kernel = process manager
+- a few privileged processes, kernel threads
+
+kernel routines can be activated in many ways 
+- syscall from process
+- CPU signals an exception from process
+- peripheral device signals an interrupt to CPU
+
+process descriptor
+- each process has a process descriptor
+- includes current state of the process
+- when done executing, saves contents of processor registers to process descriptor
+
+reentrant: what does this mean
+- several processes may execute kernel mode at the same time
+
+process address space
+- each process has own private space
+- space can be shared
+- need to add synchrization structures
+    - easy to corrupt stored information
+    - ensure atomic, noninterruptible operations
+
+kernel preemption, what is preemption
+
+semaphores
+- counter with data structure
+- count is checked by kernel threads before access
+- consists of
+    - integer variable
+    - list fo waiting processes
+    - up() + down()
+    - down() decreases value, adds process to list
+    - up() increases value, if >= 0, reactivate a process in semaphore list
+- flow
+    - starts at 1
+    - access calls down()
+    - -1 means in use
+    - != -1 is granted
+    - = -1, only add to list
+    - up() means a process on list is allowed to work
+- good: arbitrary enough
+- bad: what if one use holds up everyone else 
+- bad: semaphore checks are expensive
+    - insert process into semaphore list
+    - suspend process
+    - expensive
+
+spin lock
+- some data structures should be protected from concurrent usage
+- if time of usage is short, then semaphore a little inefficient
+- process finds lock is taken, then loop until lock is open
+- bad: purposeless in one processor
+    - kernel tries to access a locked data structure
+    - endless loop occurs
+    - that loop is endless
+    - updating data structure thread doesnt do stuff
+    - hanging system
+
+avoid deadlocks
+- try to request locks in predefined order to avoid deadlock
+- q: why is this good?
+
+signals
+- notify processes of system events
+- asynchronous vs syncrounous notifications
+- process can react:
+    - ignore signal
+    - asynchronously execute a specified procedure
+- kernel can choose to do stuff with the process too
+
+memory management 
+virtual memory
+- run programs larger than memory space available
+- multiple processes concurrently running
+- partially load programs onto real memory
+- can share memory of a library between processes
+- programs can be anywhere on memory
+
+two portions of RAM
+- a few mb for kernel image
+- other part
+    - kernel structures
+    - statisfy process requests
+    - caches for disks + buffered devices
+        - q: what is a buffer?
+- memory fragmentation could be an issue
+- address space of process contains virtual memory
+
+cache
+- physical memory used as cache for hard disk
+- hard drives slow
+- disks can be bottle neck
+    - defer writing to disk
+- sync() system call forces disk sync, write dirty buffer to disk
+- periodically write dirty buffers to disk
+
+device drivers
+- kernel interacts with i/o devices via device drivers
+- examples
+    - hard disk
+    - keyboard
+    - mouse
+    - monitor
+    - network interface
+- interacts with kernel via specific interface
+- good 
+    - device specific code can be a module
+    - vendors can add new devices without knowing the kernel, just the interface spec
+    - deals with all devices in uniform way
+    - keep kernel image minimal size
+- bad
+    - performance ceiling is lower
+
+
+order of stuff to learn/build
+
+virtual files
+real files (prob not build)
+process
+process scheduling
+memory management
+interrupts
+signals
+locks
+device drivers

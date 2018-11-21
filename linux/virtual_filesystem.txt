@@ -1,0 +1,80 @@
+virtual filesystem
+
+basics
+- flexible mounting of differently formatted disks
+    - q: what does mounting + formatting mean?
+- put lots of info on the kernel to support operations by filesystems
+    - q: difference between virtual vs real filesystem?
+- main file types
+    - files
+    - directories
+    - links
+
+definition
+- a kernel software layer that handles system calls to a standard UNIX filesystem
+- higher programs don't need to worry about interaction between filesystems
+- example: cp between a MS-DOS and a Ext2 is ok
+
+main classes of VFS
+- disk based filesystems
+- network filesystems
+- special filesystems
+
+UNIX directories
+- root is "/"
+- other filesystems can be mounted on subdirectories of root
+- you can hide files by mounting a filesytem on a directory
+    - q: what does this mean
+
+file model
+- can represent all filesystems
+- model should have minimal overhead
+- some have directories as files, some have directories not as files
+- linux kernel uses function pointers to pick proper handling per filesystem
+    - read -> sys_read -> file->f_op
+    - same for write and other stuff
+- file represented by file data structure in kernel memory
+    - kind of OOP, but not in OOP language
+- File Allocation Table (FAT)
+    - another type of filesystem
+    - store position of each file in directory tree
+    - directories are not files
+    - linux implementations need to be constructed dynamically
+    - only exist in memory
+
+common file model 
+- superblock
+    - info about mounted filesystem
+    - its usually a filesystem control block stored on disk
+- inode
+    - general info about a file
+    - a file control block stored on disk
+    - inode number is the unique number
+- file
+    - interaction between open file and process
+    - only exists in kernel memory while process is keeping the file open
+- dentry
+    - info about linking of directory entry to corresponding file
+    - stored on disk
+
+how processes interact with objects
+- 3 processes + 1 file + 2 hard links
+- 3 processes interact with 3 file objects
+- file objects refer to respective dentries
+- 2 dentries exist, 1 per hard link
+- 1 inode object 
+- 1 superblock object
+- inode and superblock refer to disk
+
+dentry cache
+- speed up translation from file pathname to inode of last pathname component
+- disk cache: keep data in RAM vs disk
+- q: how often are they hitting these files? Is it that often to where a cache would be super useful?
+- disk vs hardware vs memory cache
+    - hardware is fast static RAM vs slower dynamic RAM
+    - memory cache exists to bypass kernel memory allocator
+    - disk cache is stuff on memory rather than disk
+- page cache is one example of disk cache
+
+system calls
+
