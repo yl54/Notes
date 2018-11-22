@@ -76,5 +76,41 @@ dentry cache
     - disk cache is stuff on memory rather than disk
 - page cache is one example of disk cache
 
-system calls
+data structures
+superblock
+- individual super block has a semaphore (why)
+- has list of all inodes
+    - list that exists
+    - list to be written to disk
+- superblock objects in a circular doubly list (why)
+- list has a spin lock
+- info duplicated in memory and disk for superblock 
+    - may lead to desync
+    - dirty flag to indicate if diffs exist
+    - periodic copy to disk
+- superblock can read the inode
+- basically the function are about interacting with inodes
+- s_fs_info points to a struct about a specific filesystem
+- q: how many superblocks are in the list?
 
+inode
+- everything needed by filesystem here
+- filename is casually assigned label
+- inode unique to file, same as long as file exists
+- q: why a list to describe the inode's current state?
+- has a dirty flag as well
+- i/o transfer has a lock
+- 3 different inode lists
+    - valid unused
+    - dirty list
+    - in use inodes
+- there is an inode hashtable
+    - speed up search for inode when kernel
+    - need inode number and address of superblock 
+
+
+
+
+
+file object
+dentry
