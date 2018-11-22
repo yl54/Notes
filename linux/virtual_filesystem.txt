@@ -107,10 +107,56 @@ inode
 - there is an inode hashtable
     - speed up search for inode when kernel
     - need inode number and address of superblock 
-
-
-
-
+    - collisions are a thing
+- inode operations
+    - links (q: what are links)
 
 file object
+- q: is this the file descriptor or something different?
+- describes how a process interacts with a file that it opened
+- no corresponding image on disk
+    - no need for a dirty field
+- file pointer
+    - current position in the file where the next operation takes place
+        - q: what types of operations is this about?
+- file objects allocated via a slab cache
+- superblocks also store a list of file objects
+    - files of different filesystems are in different lists
+- f_count: number of processes using the file object
+- inode holds pointers to file operations
+    - vfs initializes f_op for file object with the address in the inode
+
 dentry
+- VFS considers each directory a file that contains a list of files + other directories
+- directory read into memory and transformed into a dentry
+- kernel creates a dentry for each process lookup
+    - i.e for /tmp/ffff, a dentry for /, /tmp, and /tmp/ffff
+- modes
+    - free
+    - unused
+    - in use
+    - negative
+- d_op = dentry operations
+- in use -> negative
+    - last hard link to file is deleted
+    - dentry object moved to the LRU
+
+dentry cache
+- takes time to read a directory from disk and create dentry object
+    - q: how often does this occur?
+- repeated access of a single file
+- keep dentry objects in memory
+- cache includes
+    - set of dentry objects in use, unused, negative
+    - hash table to get dentry object
+        - collisions resolution is a list
+- also acts as controller for an inode cache
+    - unused dentries are still in cache
+    - those inodes don't get discarded
+- dentries put in a least recently used list
+    - sorted by time of insertion
+    - kernel removes the older dentries
+- put negative dentries at the end of the LRU list
+- dcache_lock is spin lock
+- seqlock for race conditions (q: what is a seqlock?)
+
