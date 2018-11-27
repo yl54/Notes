@@ -110,6 +110,9 @@ inode
     - collisions are a thing
 - inode operations
     - links (q: what are links)
+- has a default constructor/initializer called alloc_inode
+    - everywhere in file system specific code
+    - uses inode_init_always to init the inode
 
 file object
 - q: is this the file descriptor or something different?
@@ -160,3 +163,5 @@ dentry cache
 - dcache_lock is spin lock
 - seqlock for race conditions (q: what is a seqlock?)
 
+file system types
+- 

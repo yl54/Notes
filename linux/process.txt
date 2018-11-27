@@ -1,0 +1,75 @@
+process
+
+definition: an instance of a program in execution
+- in source, its usually a task or a thread
+- collection of data structures that describes how dar the execution od a program has progressed
+- each process has one parent
+- for kernel, kernel allocates system resources to processes
+
+process creation (old way)
+- process starts out as its parent essentially
+- gets a logical copy of the parents address space
+- begins at next instruction following creation call
+- separate copies of data
+- modern systems do not use this model
+
+process creation (modern way)
+- multithreaded appication user programs
+- share large portion of application data structures
+- have multiple execution flows per process
+- process usually has multiple user threads
+- multithreads use `pthread` libraries
+- try to use lightweight processes
+- two processes may share a resource
+    - must be in sync for changes
+- try to associate a process with each thread
+    - threads then can be scheduled independently by kernel
+    - use threads to share space
+
+thread group
+- thread group = set of lightweight processes that implement a multithreaded application
+- act as a whole with getpid(), kill(), and _exit()
+
+process descriptor
+- things kernel must know
+    - process priority 
+    - running on CPU or blocked
+    - address space
+    - which files allowed to address
+- task_struct
+    - fields contain that info
+- state field
+    - describes whats currently happenning in the process
+    - TASK_RUNNING
+    - TASK_TRACED
+
+identifying a process
+- execution contexts can be independently scheduled must have a process descriptor
+- lightweight processes have own task_struct's
+- one to one correspondence of process to process descriptor
+- the 32 bit address is a useful way to identify processes
+- process descriptor pointers
+- Unix allows the process ID (PID)
+    - need a PID array map to track what exists
+    - easy to uniquely identify the process
+- Linux uses thread groups
+    - identifier shared by threads is PID of the thread group leader
+    - PID of first process in the group 
+    - tgid is the process
+    - getpid() system call returns the tgid relative to current process
+        - as opposed to its pid
+    - most processes belong to thread group of single member
+
+process descriptor handling
+- kernel needs to handle many processes at the same time
+    - lots of variety in terms of lifetimes/use cases
+- process descriptors stored in dynamic memory vs static kernel memory
+- process has two key data structures
+    - data structure linked to process descriptor
+    - kernel mode process stack
+- q: whats a page frame?
+- stacks of user mode and kernel mode are different
+    - kernel doesn't really do that much for its stack
+    - small amount, 8 KB
+    - sometimes deeply nested interrupts and exceptions can occur (q: how does it happen)
+
