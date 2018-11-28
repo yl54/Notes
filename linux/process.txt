@@ -72,4 +72,65 @@ process descriptor handling
     - kernel doesn't really do that much for its stack
     - small amount, 8 KB
     - sometimes deeply nested interrupts and exceptions can occur (q: how does it happen)
+- kernel needs to acquire the address of thread info for process currently running
+    - need process descriptor's address
+    - current macro, current_thread_info
+- check on kernel stack as opposed to some static global
 
+doubly linked lists
+- q: why do so many things use doubly linked lists
+- primitive operations for every list
+    - initialize list
+    - insert and delete element
+    - scan list
+- linux has the list_head data structure
+    - next and prev fields
+    - only store addresses of other list_head fields, not data structures they are pointing to
+    - LIST_HEAD macro to build them
+    - empty: next + prev point to list_head
+- hlist_head
+    - pointer to first element in list
+    - used for hash tables
+    - goal is space saving + no need to find last element
+
+process list
+- a list that links all existing process descriptors
+- q: why so many macros? for_each_process()
+- init_task process descriptor is kind of a dummy head
+- kernel only needs to run runnable processes
+    - this means processes being in TASK_RUNNING state
+- implementations
+    - old linux was a runqueue
+    - new linux still has runqueue
+        - allow scheduler to pick best runnable process in constant time
+        - split the runqueue into many lists of runnable processes
+        - one list per process priority
+        - each cpu has its own runqueue with own lists of processes
+        - runqueue split up into 140 lists
+        - each runqueue needs a lot of data preserved
+- prio_array_t data structure
+    - enqueue_task inserts a process descriptor into runqueue list
+
+relationships among processes
+- processes created by program have parent/child relationship
+- fields that represent this
+    - real_parent points to process that created it
+        - or process 1 if parent is incapacitated
+    - parent
+        - points to current parent of it
+        - most of the time its same as real_parent
+        - maybe a debugger might monitor it, so can have sync diff
+    - children
+        - list of all children
+    - sibling
+        - list of siblings of that process
+        - q: why is siblings important?
+- pid hash table
+    - kernel needs to derive process descriptor pointer to a PID
+    - scenario is sending signals
+    - scan list sequentially would work but inefficient
+    - use four hash tables
+        - each field represens different type of PID
+    - dynamically allocated hash tables
+    - chaining to handle collisions, doubly linked list
+        - usually have far below 32,768 entries
