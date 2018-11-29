@@ -134,3 +134,39 @@ relationships among processes
     - dynamically allocated hash tables
     - chaining to handle collisions, doubly linked list
         - usually have far below 32,768 entries
+
+process organization
+- how to group processes in states that are not TASK_RUNNING
+    - TASK_STOPPED, EXIT_ZOMBIE, EXIT_DEAD not linked to lists
+        - no real accessing use case for these three
+    - TASK_INTERRUPTIBLE, TASK_UNINTERRUPTIBLE subdivided into many classes
+        - corresponds to some event
+            - q: what type of event's are these referring to?
+        - process state does not have enough info to get process quickly
+            - need more lists
+            - these are called wait queues
+
+wait queues
+- key use cases
+    - interrupt handling
+    - process synchronization
+    - timing
+- process must often wait for events to occur
+    - disk operation to terminate
+    - system resource to be released
+    - fixed interval of time to elapse
+- wait queue basically is a set of sleeping processes
+    - q: is it a real fifo queue or just a list?
+    - q: are all of the processes waiting for the same event to occur? are there multiple wait queues?
+- implemented as doubly linked lists
+- when event occurs, shouldn't need to wake up every event in the queue
+    - waking up is too much unnecessary effort
+- two kinds of sleeping processes
+    - exclusive processes
+        - selectively woken up by kernel
+        - i.e processes waiting for a resource that can only be granted to one process at a time
+    - nonexclusive processes 
+        - always woken up by the kernel by any event
+    - q: would it be better to split up into even more queue lists per event? 
+    - q: what is the general distribution between nonexclusive and exclusive jobs?
+
