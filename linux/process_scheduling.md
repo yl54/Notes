@@ -5,7 +5,7 @@
 
 ## Scheduling Policy
 
-### Traditional Unix has a few objectives
+### Traditional Unix objectives
 * Fast proccess response time
 * Good throughput for background jobs
 * Avoid process starvation
@@ -36,8 +36,32 @@
 ### Types of Processes
 * Interactive processes
     * Interact constantly with users
+    * Wait for keypresses + mouse operations
+    * Seems like lots of I/O operations
+    * Process needs to be woken up quickly to respond
+        * Consequence is that user sees a delay in response on GUI
+        * i.e typing a letter has a 2 second delay to render
+    * Average delay must be 50 - 150 ms
+        * Need to also keep delay bounded
+        * Consequence is that user sees erratic delays in response on GUI
+    * Typical applications
+        * Command shells
+        * Text editors
+        * Browsers
 * Batch processes
-* Real-time processes 
-
-
-
+    * No user interaction, often run in background
+    * Don't need to be responsive
+        * Penalized by scheduler as a result
+    * Typical applications
+        * language compilers
+        * remote web servers
+        * database search engines
+        * computation focused app
+* Real-time processes
+    * Have very stringent scheduling requirements
+    * Can never be blocked by lower-priority processes
+    * Short guaranteed response time with minimum variance
+    * Typical applications
+        * Video + sound apps
+        * Robot controllers
+        * Data collection tools from physical sensors
