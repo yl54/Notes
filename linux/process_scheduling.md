@@ -65,3 +65,33 @@
         * Video + sound apps
         * Robot controllers
         * Data collection tools from physical sensors
+* Scheduler behavior
+    * Real time applications are specially recognized by scheduler
+    * Hard to tell difference between batch vs interactive
+    * Have hueristic to guess which one
+        * Uses past behavior of the process
+        * Probably includes I/O operations
+    * Programmers can change scheduling priorities via system calls
+
+### Process Preemption
+* Linux processes are preemptible
+* Flow
+    * Process enters TASK_RUNNING state
+    * Kernel checks current priority of Process A is greater than priority of current running Process B
+    * If it is, current Process B is interrupted
+    * Scheduler is invoked to select another process to run
+        * Usually is the process that just entered the TASK_RUNNABLE state
+    * Process B may be preempted if its time slice expires
+    * Process B gets the TIF_NEED_RESCHED flag set
+    * Scheduler invoked when timer interrupt handler terminates
+* Prempted process
+    * They aren't suspened
+    * Still in TASK_RUNNING state
+    * Not using CPU though
+
+### Appropriate Time Frame for Quantam/time slice
+* Cannot be too short or too long
+    * Too short = too many process switches, too much CPU effort there
+    * Too long = processes don't look to be executing concurrently
+        * Each runnable process stops for too long time
+        * May degrade responsiveness of a system
