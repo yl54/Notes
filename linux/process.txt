@@ -2,7 +2,7 @@ process
 
 definition: an instance of a program in execution
 - in source, its usually a task or a thread
-- collection of data structures that describes how dar the execution od a program has progressed
+- collection of data structures that describes how far the execution of a program has progressed
 - each process has one parent
 - for kernel, kernel allocates system resources to processes
 
@@ -14,7 +14,7 @@ process creation (old way)
 - modern systems do not use this model
 
 process creation (modern way)
-- multithreaded appication user programs
+- multithreaded application user programs
 - share large portion of application data structures
 - have multiple execution flows per process
 - process usually has multiple user threads
