@@ -138,3 +138,41 @@
 * New process inherits static priority of parent
 * User can change the priority via apis
 
+### Base Time Quantum
+* Static priority basically determines the base time quantum of a process
+* Basic formula
+    * Priority 120 is arbitrary cutoff for formula
+    * < 120 has a 4x multiplier
+    * (140 - x) * 5  if x >= 120
+    * (140 - x) * 20  if x < 120
+* Higher priority get larger slices compared to lower priority
+* There are 5 preset values
+
+### Dynamic Priority and Average Sleep Time
+* Processes have both a dynamic and static priority
+* Dynamic priority is the number looked by scheduler to run
+* Dynamic priority: max (100, min (  static priority - bonus + 5, 139))
+    * bonus depends on average sleep time of process
+* Average sleep time is average number of nanoseconds the process spent sleeping
+    * It does not just measure elapsed time
+    * TASK_INTERRUPTIBLE vs TASK_UNINTERRUPTIBLE
+    * These contribute to average time differently
+    * Average sleep time can never be larger than 1 second
+    * Also used to determine if process is batch or interactive
+        * dynamic priority <= 3 x static priority / 4 + 28 
+
+### Active and Expired Processes
+* Higher priority processes shouldn't simply lock out lower priority processes
+* Two disjoint process lists
+    * Active processes
+        * Runnable processes that haven't exhausted the time quantum
+        * Allowed to run
+    * Expired processes
+        * Runnable processes exhausted time quantum
+        * Forbidden to run until all active processes expire
+* A little more complex b/c scheduler tries to boost performance of interactive processes
+
+
+
+
+
