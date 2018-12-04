@@ -95,3 +95,46 @@
     * Too long = processes don't look to be executing concurrently
         * Each runnable process stops for too long time
         * May degrade responsiveness of a system
+* General rule of thumb
+    * Make it as long as possible before it impacts system response time
+
+## Scheduling Algorithm
+
+### Intro
+* Scheduling algorithm ued to be simple
+    * At every process switch, the kernel:
+        * Scans list of runnable processes
+        * Compute priorities
+        * Select best process to run
+    * Time spent selecting best process is directly related to number of runnable processes that exist
+        * Too costly if too many processes being run at once
+        * Too much time spent on process analysis
+* New scheduling algorithm scales much better
+    * Selects process in constant time
+    * Each cpu has its own queue of runnable processes
+    * Better distinguishes interactive vs batch processes
+    * Users of interactive programs feel new linux is more responsive than previous versions
+* Scheduler always succeeds in finding a process to run
+    * Always at least one runnable process: the Swapper process
+        * Swapper only executes when CPU cannot execute other processes
+        * q: does this have any functional value, or is it just a filler?
+* Scheduling classes
+    * SCHED_FIFO
+        * First in first out 
+        * For real time processes
+        * If there are no other higher priority real time processes, just keep running current process
+    * SCHED_RR
+        * Round robin scheduler
+        * For real time processes
+        * Fair assignment of CPU time to all real time processes with the same priority
+    * SCHED_NORMAL
+        * Normal scheduler
+    * Very different behaviors depending on tif its a real time or conventional process
+
+### Scheduling of Conventional Processes
+* Conventional process has a static priority
+    * Used by scheduler to rate the process with respect to other conventional processes
+    * Values range from 100 (highest priority) to 139 (lowest priority)
+* New process inherits static priority of parent
+* User can change the priority via apis
+
