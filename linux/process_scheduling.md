@@ -10,6 +10,7 @@
 * Good throughput for background jobs
 * Avoid process starvation
 * Balance low vs high priority processes
+
 ### Linux scheduling info
 * Each procesws runs in an arbitrary time slice
 * CPU time is divided into slices
@@ -171,8 +172,4 @@
         * Runnable processes exhausted time quantum
         * Forbidden to run until all active processes expire
 * A little more complex b/c scheduler tries to boost performance of interactive processes
-
-
-
-
 
